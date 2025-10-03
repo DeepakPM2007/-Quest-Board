@@ -64,7 +64,7 @@ const Charts = (() => {
     const step = Math.max(1, Math.floor(n / 6));
     for (let i = 0; i < n; i += step) {
       const x = pad + (i * (width - pad * 2)) / (n - 1 || 1);
-      const d = dates[i]?.slice(5); // "MM-DD"
+      const d = dates[i]?.slice(5); // MM-DD
       ctx.fillText(d || "", x - 16, height - 6);
     }
   }
@@ -85,7 +85,6 @@ const Charts = (() => {
     drawYAxisLabels(ctx, pad, min, max, step, labelColor);
     drawXAxisDates(ctx, pad, dates, labelColor);
 
-    // Path
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -98,7 +97,6 @@ const Charts = (() => {
     });
     ctx.stroke();
 
-    // Points
     ctx.fillStyle = color;
     data.forEach((val, i) => {
       const x =

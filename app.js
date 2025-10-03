@@ -2,8 +2,10 @@
    - Beautiful dropdowns and multi-theme support (cyber/midnight/sunset)
    - Secure auth: username + PIN (SHA-256 hash), per-user isolated storage
    - Remember me for auto-login on the same device
-   - Lists & charts scroll smoothly (touch momentum)
-   - Clean charts with axes, ticks, readable labels
+   - Smooth mobile spacing and touch-first UI
+   - Clean charts with axes, ticks, readable labels (RTL timeline)
+   - Task toggle: single XP per day; prevents XP inflation on repeated toggling
+   - Custom due date picker bottom sheet; repeat days chips
 */
 
 const STORAGE_LAST_USER = "cm_lastUser";
@@ -140,6 +142,12 @@ const App = (() => {
     updateTopbar();
     save();
   }
+  function removeXP(amount) {
+    state.xp = Math.max(0, state.xp - amount);
+    state.level = Math.max(1, Math.floor(1 + Math.pow(state.xp / 100, 0.6)));
+    updateTopbar();
+    save();
+  }
 
   /* ---------- Habits ---------- */
   function addHabit(habit) {
@@ -153,25 +161,46 @@ const App = (() => {
       paused: false,
       history: {},
       missesInRow: 0,
+      lastCompletionDate: null,
+      xpAwardedToday: 0,
     });
     save();
     renderHabits();
   }
 
-  function toggleHabitDone(id) {
+  function toggleHabitDone(id, checked) {
     const h = state.habits.find((x) => x.id === id);
     if (!h) return;
-    const done = !!h.history[state.today];
-    if (done) {
-      delete h.history[state.today];
-      h.streak = Math.max(h.streak - 1, 0);
+
+    if (checked) {
+      // Mark done today; award XP only once per day
+      if (h.lastCompletionDate !== state.today) {
+        h.history[state.today] = true;
+        h.lastCompletionDate = state.today;
+        h.streak += 1;
+        h.missesInRow = 0;
+        const xpGain = xpForHabit(h.diff);
+        addXP(xpGain);
+        h.xpAwardedToday = xpGain;
+        logHabitCompletionToday();
+      } else {
+        // Already completed today; do nothing
+      }
     } else {
-      h.history[state.today] = true;
-      h.streak += 1;
-      h.missesInRow = 0;
-      addXP(xpForHabit(h.diff));
-      logHabitCompletionToday();
+      // Unmark today's completion; revert counters and XP if it was today
+      if (h.lastCompletionDate === state.today) {
+        delete h.history[state.today];
+        h.lastCompletionDate = null;
+        h.streak = Math.max(h.streak - 1, 0);
+        // Revert logs and XP only if awarded today
+        if (h.xpAwardedToday > 0) {
+          removeXP(h.xpAwardedToday);
+          h.xpAwardedToday = 0;
+          unlogHabitCompletionToday();
+        }
+      }
     }
+
     save();
     renderHabits();
     renderStats();
@@ -225,28 +254,54 @@ const App = (() => {
       id: uid(),
       title: task.title,
       due: task.due || null,
+      repeat: task.repeat || [], // ['mon','wed']
       priority: task.priority || "medium",
       done: false,
       created: state.today,
+      lastCompletionDate: null,
+      xpAwardedToday: 0,
     });
     logTaskAddedToday();
     save();
     renderTasks();
   }
 
-  function toggleTask(id) {
+  function toggleTask(id, checked) {
     const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
-    t.done = !t.done;
-    if (t.done) {
-      addXP(xpForTask(t.priority));
-      logTaskCompletedToday();
+    t.done = checked;
+
+    if (checked) {
+      // Award XP only once per day per task
+      if (t.lastCompletionDate !== state.today) {
+        const xpGain = xpForTask(t.priority);
+        addXP(xpGain);
+        t.lastCompletionDate = state.today;
+        t.xpAwardedToday = xpGain;
+        logTaskCompletedToday();
+      }
+    } else {
+      // Unmark today's completion: revert logs & XP only if it was today
+      if (t.lastCompletionDate === state.today) {
+        t.lastCompletionDate = null;
+        if (t.xpAwardedToday > 0) {
+          removeXP(t.xpAwardedToday);
+          t.xpAwardedToday = 0;
+          unlogTaskCompletedToday();
+        }
+      }
     }
+
     save();
     renderTasks();
     renderStats();
   }
 
+  function xpForTask(p) {
+    if (p === "high") return 16;
+    if (p === "medium") return 10;
+    return 6;
+  }
   function deleteTask(id) {
     const i = state.tasks.findIndex((x) => x.id === id);
     if (i >= 0) state.tasks.splice(i, 1);
@@ -254,16 +309,15 @@ const App = (() => {
     renderTasks();
     renderStats();
   }
-  function xpForTask(p) {
-    if (p === "high") return 16;
-    if (p === "medium") return 10;
-    return 6;
-  }
 
   /* ---------- Logs ---------- */
   function logHabitCompletionToday() {
     const d = state.today;
     state.logs.habitDaily[d] = (state.logs.habitDaily[d] || 0) + 1;
+  }
+  function unlogHabitCompletionToday() {
+    const d = state.today;
+    state.logs.habitDaily[d] = Math.max(0, (state.logs.habitDaily[d] || 0) - 1);
   }
   function logTaskAddedToday() {
     const d = state.today;
@@ -273,6 +327,13 @@ const App = (() => {
     const d = state.today;
     state.logs.taskDaily.completed[d] =
       (state.logs.taskDaily.completed[d] || 0) + 1;
+  }
+  function unlogTaskCompletedToday() {
+    const d = state.today;
+    state.logs.taskDaily.completed[d] = Math.max(
+      0,
+      (state.logs.taskDaily.completed[d] || 0) - 1
+    );
   }
 
   /* ---------- Rendering ---------- */
@@ -314,9 +375,12 @@ const App = (() => {
 
     list.innerHTML = habits.map(habitCard).join("");
     habits.forEach((h) => {
+      const checkboxId = `toggle-${h.id}`;
       document
-        .getElementById(`toggle-${h.id}`)
-        .addEventListener("click", () => toggleHabitDone(h.id));
+        .getElementById(checkboxId)
+        .addEventListener("change", (e) =>
+          toggleHabitDone(h.id, e.target.checked)
+        );
       document
         .getElementById(`pause-${h.id}`)
         .addEventListener("click", () =>
@@ -335,7 +399,7 @@ const App = (() => {
   }
 
   function habitCard(h) {
-    const todayDone = !!h.history[state.today];
+    const todayDone = h.lastCompletionDate === state.today;
     return `
       <div class="habit ${h.paused ? "paused" : ""}">
         <div class="habit-head">
@@ -352,9 +416,12 @@ const App = (() => {
     }</button>
         </div>
         <div class="habit-actions">
-          <button id="toggle-${h.id}" class="toggle ${
-      todayDone ? "done" : ""
-    }">${todayDone ? "Done today" : "Mark done"}</button>
+          <label class="toggle ${todayDone ? "done" : ""}">
+            <input type="checkbox" id="toggle-${h.id}" ${
+      todayDone ? "checked" : ""
+    } />
+            <span>${todayDone ? "Done today" : "Mark done"}</span>
+          </label>
           <button id="edit-${h.id}" class="btn">Edit</button>
           <button id="del-${
             h.id
@@ -389,7 +456,7 @@ const App = (() => {
     tasks.forEach((t) => {
       document
         .getElementById(`task-toggle-${t.id}`)
-        .addEventListener("click", () => toggleTask(t.id));
+        .addEventListener("change", (e) => toggleTask(t.id, e.target.checked));
       document
         .getElementById(`task-del-${t.id}`)
         .addEventListener("click", () => deleteTask(t.id));
@@ -406,6 +473,9 @@ const App = (() => {
         : t.priority === "medium"
         ? "priority-medium"
         : "priority-low";
+    const repeatText = t.repeat?.length
+      ? ` • repeats: ${t.repeat.join(", ")}`
+      : "";
     return `
       <div class="task">
         <input type="checkbox" id="task-toggle-${t.id}" ${
@@ -413,9 +483,11 @@ const App = (() => {
     } />
         <div>
           <div class="title">${escapeHTML(t.title)}</div>
-          <div class="meta">${
-            t.due ? `Due ${t.due}` : "No due date"
-          } • <span class="${prCls}">${t.priority}</span></div>
+          <div class="meta">
+            ${
+              t.due ? `Due ${t.due}` : "No due date"
+            } • <span class="${prCls}">${t.priority}</span>${repeatText}
+          </div>
         </div>
         <button id="task-del-${
           t.id
@@ -424,10 +496,13 @@ const App = (() => {
     `;
   }
 
+  /* ---------- Stats (RTL timeline, clean charts) ---------- */
   function renderStats() {
-    const days = rangeDays(60); // chronological order
-    const reversedDays = [...days].reverse(); // for right-to-left display
+    // Lifetime stats (optional: add elements if needed)
+    const days = rangeDays(60); // chronological
+    const reversedDays = [...days].reverse(); // show recent on right
 
+    // Habit
     const habitCanvas = document.getElementById("habitChart");
     habitCanvas.width = Math.max(1200, reversedDays.length * 28);
     const habitCtx = habitCanvas.getContext("2d");
@@ -437,16 +512,22 @@ const App = (() => {
       state.habits.reduce((m, h) => Math.max(m, h.streak), 0)
     );
 
-    Charts.lineChart(habitCtx, habitSeries, reversedDays, { color: "#6cf09a" });
+    Charts.lineChart(habitCtx, habitSeries, reversedDays, {
+      color: "#6cf09a",
+      gridColor: "rgba(255,255,255,0.08)",
+      labelColor: "rgba(255,255,255,0.6)",
+    });
     Charts.lineChart(habitCtx, streakTrend, reversedDays, {
       color: "#59f0ff",
+      gridColor: "transparent",
+      labelColor: "transparent",
       point: 0,
     });
 
+    // Task
     const taskCanvas = document.getElementById("taskChart");
     taskCanvas.width = Math.max(1200, reversedDays.length * 28);
     const taskCtx = taskCanvas.getContext("2d");
-
     const completedSeries = reversedDays.map(
       (d) => state.logs.taskDaily.completed[d] || 0
     );
@@ -457,6 +538,8 @@ const App = (() => {
     Charts.barDual(taskCtx, completedSeries, addedSeries, reversedDays, {
       colorA: "#c48dff",
       colorB: "#ffb36b",
+      gridColor: "rgba(255,255,255,0.08)",
+      labelColor: "rgba(255,255,255,0.6)",
     });
   }
 
@@ -526,12 +609,28 @@ const App = (() => {
     saveBtn.addEventListener("click", handler);
   }
 
-  function openTaskModal() {
+  function openTaskModal(task = null) {
     const dlg = document.getElementById("taskModal");
-    document.getElementById("taskModalTitle").textContent = "New task";
-    document.getElementById("taskTitle").value = "";
-    document.getElementById("taskDue").value = "";
-    document.getElementById("taskPriority").value = "medium";
+    document.getElementById("taskModalTitle").textContent = task
+      ? "Edit task"
+      : "New task";
+    document.getElementById("taskTitle").value = task?.title || "";
+    document.getElementById("taskDue").value = task?.due || "";
+    document.getElementById("taskPriority").value = task?.priority || "medium";
+
+    // Repeat chips
+    const repeatRow = document.getElementById("repeatDays");
+    repeatRow.querySelectorAll(".chip").forEach((ch) => {
+      ch.classList.toggle(
+        "active",
+        (task?.repeat || []).includes(ch.dataset.day)
+      );
+      ch.onclick = () => ch.classList.toggle("active");
+    });
+
+    // Mini calendar bottom sheet
+    setupMiniCalendar();
+
     dlg.showModal();
     const saveBtn = document.getElementById("saveTask");
     const handler = (ev) => {
@@ -540,12 +639,101 @@ const App = (() => {
       const due = document.getElementById("taskDue").value || null;
       const priority =
         document.getElementById("taskPriority").value || "medium";
+      const repeat = Array.from(repeatRow.querySelectorAll(".chip.active")).map(
+        (ch) => ch.dataset.day
+      );
       if (!title) return;
-      addTask({ title, due, priority });
+
+      if (task) {
+        Object.assign(task, { title, due, priority, repeat });
+      } else {
+        addTask({ title, due, priority, repeat });
+      }
       dlg.close();
       saveBtn.removeEventListener("click", handler);
     };
     saveBtn.addEventListener("click", handler);
+  }
+
+  /* ---------- Mini Calendar (custom days picker) ---------- */
+  function setupMiniCalendar() {
+    const openBtn = document.getElementById("openDatePicker");
+    const sheet = document.getElementById("miniCalendar");
+    const label = document.getElementById("calLabel");
+    const grid = document.getElementById("calGrid");
+    const btnPrev = document.getElementById("calPrev");
+    const btnNext = document.getElementById("calNext");
+    const btnClose = document.getElementById("calClose");
+    const btnApply = document.getElementById("calApply");
+    const input = document.getElementById("taskDue");
+
+    let current = new Date(input.value || Date.now());
+    let selected = input.value ? new Date(input.value) : null;
+
+    function fmt(d) {
+      return d.toISOString().slice(0, 10);
+    }
+    function ymd(d) {
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+        2,
+        "0"
+      )}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    function renderCal() {
+      const year = current.getFullYear();
+      const month = current.getMonth();
+      label.textContent = current.toLocaleString(undefined, {
+        month: "long",
+        year: "numeric",
+      });
+      grid.innerHTML = "";
+
+      // Weekday headers (optional): we’ll show only days
+      const first = new Date(year, month, 1);
+      const startIdx = first.getDay(); // 0..6
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+      // pads
+      for (let i = 0; i < startIdx; i++) {
+        const pad = document.createElement("div");
+        grid.appendChild(pad);
+      }
+
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(year, month, day);
+        const cell = document.createElement("div");
+        cell.className = "cal-day";
+        cell.textContent = String(day);
+        if (fmt(d) === state.today) cell.classList.add("today");
+        if (selected && fmt(d) === fmt(selected))
+          cell.classList.add("selected");
+        cell.onclick = () => {
+          selected = d;
+          renderCal();
+        };
+        grid.appendChild(cell);
+      }
+    }
+
+    btnPrev.onclick = () => {
+      current.setMonth(current.getMonth() - 1);
+      renderCal();
+    };
+    btnNext.onclick = () => {
+      current.setMonth(current.getMonth() + 1);
+      renderCal();
+    };
+    btnClose.onclick = () => sheet.classList.add("hidden");
+    btnApply.onclick = () => {
+      if (selected) input.value = ymd(selected);
+      sheet.classList.add("hidden");
+    };
+
+    openBtn.onclick = () => {
+      sheet.classList.remove("hidden");
+      renderCal();
+    };
   }
 
   /* ---------- Theme ---------- */
@@ -672,6 +860,8 @@ const App = (() => {
         paused: false,
         history: { [state.today]: true },
         missesInRow: 0,
+        lastCompletionDate: state.today,
+        xpAwardedToday: 8,
       },
       {
         id: uid(),
@@ -683,6 +873,8 @@ const App = (() => {
         paused: false,
         history: {},
         missesInRow: 1,
+        lastCompletionDate: null,
+        xpAwardedToday: 0,
       },
       {
         id: uid(),
@@ -694,6 +886,8 @@ const App = (() => {
         paused: false,
         history: {},
         missesInRow: 2,
+        lastCompletionDate: null,
+        xpAwardedToday: 0,
       },
     ];
     state.tasks = [
@@ -701,25 +895,34 @@ const App = (() => {
         id: uid(),
         title: "Ship UI polish",
         due: state.today,
+        repeat: ["mon", "wed", "fri"],
         priority: "high",
         done: false,
         created: state.today,
+        lastCompletionDate: null,
+        xpAwardedToday: 0,
       },
       {
         id: uid(),
         title: "Email testers",
         due: null,
+        repeat: [],
         priority: "medium",
         done: false,
         created: state.today,
+        lastCompletionDate: null,
+        xpAwardedToday: 0,
       },
       {
         id: uid(),
         title: "Refactor storage",
         due: state.today,
+        repeat: [],
         priority: "low",
         done: true,
         created: state.today,
+        lastCompletionDate: state.today,
+        xpAwardedToday: 6,
       },
     ];
     for (let i = 0; i < 12; i++) {
