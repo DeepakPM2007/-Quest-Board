@@ -1,303 +1,230 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cyber Mystic Habits</title>
-    <link rel="stylesheet" href="css/styles.css" />
-  </head>
-  <body>
-    <!-- Background + particles -->
-    <div id="bg"></div>
-    <canvas id="starfield" aria-hidden="true"></canvas>
+<html lang="en" data-theme="cyber">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Cyber Mystic — Habits & Tasks</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="bg"></div>
+  <canvas id="starfield" aria-hidden="true"></canvas>
 
-    <!-- App wrapper -->
-    <div id="app">
-      <!-- Auth view -->
-      <section id="auth" class="view active">
-        <div class="card login-card">
-          <div class="brand">
-            <div class="logo-orb"></div>
-            <h1>Cyber Mystic</h1>
-            <p class="tagline">Track habits. Level up. Forgive. Continue.</p>
+  <div id="app">
+    <!-- Auth -->
+    <section id="auth" class="view active">
+      <div class="card login-card">
+        <div class="brand">
+          <div class="logo-orb"></div>
+          <h1>Cyber Mystic</h1>
+          <p class="tagline">Track habits. Level up. Forgive. Continue.</p>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <label class="field"><span>Username</span>
+            <input type="text" id="username" inputmode="text" autocapitalize="none" required />
+          </label>
+          <label class="field"><span>PIN (4 digits)</span>
+            <input type="password" id="pin" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" required />
+          </label>
+
+          <div class="actions">
+            <button type="submit" class="btn primary">Login</button>
+            <button type="button" id="quickDemo" class="btn ghost">Demo</button>
           </div>
 
-          <form id="loginForm" autocomplete="off">
-            <label class="field">
-              <span>Username</span>
-              <input
-                type="text"
-                id="username"
-                placeholder="e.g., deepak"
-                required
-              />
+          <div class="meta-row">
+            <label class="remember">
+              <input type="checkbox" id="remember" />
+              <span>Remember me</span>
             </label>
+            <button type="button" id="resetAll" class="link danger">Reset my data</button>
+          </div>
+        </form>
+      </div>
+    </section>
 
-            <label class="field">
-              <span>PIN (4 digits)</span>
-              <input
-                type="password"
-                id="pin"
-                inputmode="numeric"
-                maxlength="4"
-                placeholder="••••"
-                required
-              />
+    <!-- Main -->
+    <section id="main" class="view">
+      <header class="topbar">
+        <div class="left">
+          <div class="logo-orb small"></div>
+          <h2>Dashboard</h2>
+          <span id="dateToday"></span>
+        </div>
+        <div class="right">
+          <div class="xp"><span class="label">Level</span><span id="level">1</span> <span class="label">XP</span><span id="xp">0</span></div>
+          <button id="logout" class="btn ghost">Logout</button>
+        </div>
+      </header>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="habits">Habits</button>
+        <button class="tab" data-tab="tasks">Tasks</button>
+        <button class="tab" data-tab="stats">Stats</button>
+        <button class="tab" data-tab="settings">Settings</button>
+      </nav>
+
+      <!-- Habits -->
+      <div id="panel-habits" class="panel active">
+        <div class="panel-head">
+          <h3>Habits</h3>
+          <div class="panel-actions">
+            <button id="addHabit" class="btn primary">New habit</button>
+            <label class="field compact">
+              <span>View</span>
+              <select id="habitView" class="dropdown">
+                <option value="today">Today</option>
+                <option value="all">All</option>
+              </select>
             </label>
-
-            <div class="actions">
-              <button type="submit" class="btn primary">Enter</button>
-              <button type="button" id="quickDemo" class="btn ghost">
-                Demo
-              </button>
-            </div>
-
-            <div class="meta-row">
-              <label class="remember">
-                <input type="checkbox" id="remember" />
-                <span>Remember me</span>
-              </label>
-              <button type="button" id="resetAll" class="link danger">
-                Reset my data
-              </button>
-            </div>
-          </form>
+            <label class="field compact">
+              <span>Sort</span>
+              <select id="habitSort" class="dropdown">
+                <option value="streak">Streak</option>
+                <option value="name">Name</option>
+                <option value="difficulty">Difficulty</option>
+              </select>
+            </label>
+          </div>
         </div>
-      </section>
+        <div id="habitList" class="grid"></div>
+      </div>
 
-      <!-- Main view -->
-      <section id="main" class="view">
-        <!-- Top bar -->
-        <header class="topbar">
-          <div class="left">
-            <div class="logo-orb small"></div>
-            <h2>Dashboard</h2>
-            <span id="dateToday"></span>
+      <!-- Tasks -->
+      <div id="panel-tasks" class="panel">
+        <div class="panel-head">
+          <h3>Tasks</h3>
+          <div class="panel-actions">
+            <button id="addTask" class="btn primary">New task</button>
+            <label class="field compact">
+              <span>View</span>
+              <select id="taskView" class="dropdown">
+                <option value="today">Today</option>
+                <option value="upcoming">Upcoming</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+            <label class="field compact">
+              <span>Sort</span>
+              <select id="taskSort" class="dropdown">
+                <option value="priority">Priority</option>
+                <option value="due">Due date</option>
+                <option value="name">Name</option>
+              </select>
+            </label>
           </div>
-          <div class="right">
-            <div class="xp">
-              <span class="label">Level</span><span id="level">1</span>
-              <span class="label">XP</span><span id="xp">0</span>
-            </div>
-            <button id="logout" class="btn ghost">Logout</button>
-          </div>
-        </header>
-
-        <!-- Tabs -->
-        <nav class="tabs">
-          <button class="tab active" data-tab="habits">Habits</button>
-          <button class="tab" data-tab="tasks">To‑Do</button>
-          <button class="tab" data-tab="stats">Stats</button>
-          <button class="tab" data-tab="settings">Settings</button>
-        </nav>
-
-        <!-- Habits panel -->
-        <div id="panel-habits" class="panel active">
-          <div class="panel-head">
-            <h3>Habits</h3>
-            <div class="panel-actions">
-              <button id="addHabit" class="btn primary">New habit</button>
-              <label class="field compact">
-                <span>View</span>
-                <select id="habitView">
-                  <option value="today">Today</option>
-                  <option value="all">All</option>
-                </select>
-              </label>
-              <label class="field compact">
-                <span>Sort</span>
-                <select id="habitSort">
-                  <option value="streak">Streak</option>
-                  <option value="name">Name</option>
-                  <option value="difficulty">Difficulty</option>
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div id="habitList" class="grid"></div>
         </div>
+        <div id="taskList" class="list"></div>
+      </div>
 
-        <!-- Tasks panel -->
-        <div id="panel-tasks" class="panel">
-          <div class="panel-head">
-            <h3>To‑Do</h3>
-            <div class="panel-actions">
-              <button id="addTask" class="btn primary">New task</button>
-              <label class="field compact">
-                <span>View</span>
-                <select id="taskView">
-                  <option value="today">Today</option>
-                  <option value="upcoming">Upcoming</option>
-                  <option value="all">All</option>
-                </select>
-              </label>
-              <label class="field compact">
-                <span>Sort</span>
-                <select id="taskSort">
-                  <option value="priority">Priority</option>
-                  <option value="due">Due date</option>
-                  <option value="name">Name</option>
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <div id="taskList" class="list"></div>
+      <!-- Stats -->
+      <div id="panel-stats" class="panel">
+        <div class="panel-head">
+          <h3>Stats</h3>
         </div>
-
-        <!-- Stats panel -->
-        <div id="panel-stats" class="panel">
-          <div class="panel-head">
-            <h3>Stats</h3>
+        <div class="stats-grid">
+          <div class="card chart-card">
+            <h4>Habit completions (last 60 days)</h4>
+            <div class="chart-scroll">
+              <canvas id="habitChart" height="240"></canvas>
+            </div>
+            <div class="legend-row">
+              <span class="legend-dot green"></span><span>Completions</span>
+              <span class="legend-dot blue"></span><span>Best streak</span>
+            </div>
           </div>
 
-          <div class="stats-grid">
-            <div class="card chart-card">
-              <h4>Habit completion (last 60 days)</h4>
-              <div class="chart-scroll">
-                <canvas id="habitChart" height="240"></canvas>
-              </div>
-              <div class="legend-row">
-                <span class="legend-dot green"></span><span>Completions</span>
-                <span class="legend-dot blue"></span><span>Streak trend</span>
-              </div>
+          <div class="card chart-card">
+            <h4>Task throughput (last 60 days)</h4>
+            <div class="chart-scroll">
+              <canvas id="taskChart" height="240"></canvas>
             </div>
-
-            <div class="card chart-card">
-              <h4>Task throughput (last 60 days)</h4>
-              <div class="chart-scroll">
-                <canvas id="taskChart" height="240"></canvas>
-              </div>
-              <div class="legend-row">
-                <span class="legend-dot purple"></span><span>Completed</span>
-                <span class="legend-dot orange"></span><span>Added</span>
-              </div>
-            </div>
-
-            <div class="card stat-card">
-              <h4>Lifetime</h4>
-              <div class="stats-row">
-                <div class="stat">
-                  <span class="label">Best streak</span>
-                  <span id="bestStreak">0</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Total habits</span>
-                  <span id="totalHabits">0</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Tasks completed</span>
-                  <span id="tasksCompleted">0</span>
-                </div>
-                <div class="stat">
-                  <span class="label">Forgiven misses</span>
-                  <span id="forgivenMisses">0</span>
-                </div>
-              </div>
+            <div class="legend-row">
+              <span class="legend-dot purple"></span><span>Completed</span>
+              <span class="legend-dot orange"></span><span>Added</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Settings panel -->
-        <div id="panel-settings" class="panel">
-          <div class="panel-head">
-            <h3>Settings</h3>
+      <!-- Settings -->
+      <div id="panel-settings" class="panel">
+        <div class="panel-head">
+          <h3>Settings</h3>
+        </div>
+        <div class="settings-grid">
+          <div class="card">
+            <h4>Streak forgiveness</h4>
+            <label class="field"><span>Grace days per week</span><input type="number" id="graceDays" min="0" max="3" /></label>
+            <label class="field"><span>Auto-pause after misses</span><input type="number" id="autoPauseAfter" min="0" max="7" /></label>
+            <button id="saveSettings" class="btn primary">Save</button>
           </div>
-          <div class="settings-grid">
-            <div class="card">
-              <h4>Streak forgiveness</h4>
-              <label class="field">
-                <span>Grace days per week</span>
-                <input type="number" id="graceDays" min="0" max="3" />
-              </label>
-              <label class="field">
-                <span>Auto-pause after misses</span>
-                <input type="number" id="autoPauseAfter" min="0" max="7" />
-              </label>
-              <button id="saveSettings" class="btn primary">Save</button>
-            </div>
 
-            <div class="card">
-              <h4>Appearance</h4>
-              <label class="field">
-                <span>Theme</span>
-                <select id="theme">
-                  <option value="cyber">Cyber Mystic</option>
-                  <option value="midnight">Midnight glass</option>
-                  <option value="sunset">Sunset neon</option>
-                </select>
-              </label>
-              <button id="applyTheme" class="btn">Apply</button>
-            </div>
+          <div class="card">
+            <h4>Appearance</h4>
+            <label class="field"><span>Theme</span>
+              <select id="theme" class="dropdown">
+                <option value="cyber">Cyber Mystic</option>
+                <option value="midnight">Midnight</option>
+                <option value="sunset">Sunset</option>
+              </select>
+            </label>
+            <button id="applyTheme" class="btn">Apply</button>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
+  </div>
 
-    <!-- Habit modal -->
-    <dialog id="habitModal">
-      <form method="dialog" id="habitForm">
-        <h3 id="habitModalTitle">New habit</h3>
-        <label class="field">
-          <span>Name</span>
-          <input type="text" id="habitName" required />
-        </label>
-        <label class="field">
-          <span>Frequency</span>
-          <select id="habitFreq">
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="custom">Custom</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Difficulty</span>
-          <select id="habitDiff">
-            <option value="easy">Easy</option>
-            <option value="medium">Medium</option>
-            <option value="hard">Hard</option>
-          </select>
-        </label>
-        <label class="field">
-          <span>Start date</span>
-          <input type="date" id="habitStart" />
-        </label>
-        <menu class="dialog-actions">
-          <button value="cancel" class="btn ghost">Cancel</button>
-          <button value="ok" class="btn primary" id="saveHabit">Save</button>
-        </menu>
-      </form>
-    </dialog>
+  <!-- Habit modal -->
+  <dialog id="habitModal">
+    <form method="dialog" id="habitForm">
+      <h3 id="habitModalTitle">New habit</h3>
+      <label class="field"><span>Name</span><input type="text" id="habitName" required /></label>
+      <label class="field"><span>Frequency</span>
+        <select id="habitFreq" class="dropdown">
+          <option value="daily">Daily</option>
+          <option value="weekly">Weekly</option>
+          <option value="custom">Custom</option>
+        </select>
+      </label>
+      <label class="field"><span>Difficulty</span>
+        <select id="habitDiff" class="dropdown">
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+      </label>
+      <label class="field"><span>Start date</span><input type="date" id="habitStart" /></label>
+      <menu class="dialog-actions">
+        <button value="cancel" class="btn ghost">Cancel</button>
+        <button value="ok" class="btn primary" id="saveHabit">Save</button>
+      </menu>
+    </form>
+  </dialog>
 
-    <!-- Task modal -->
-    <dialog id="taskModal">
-      <form method="dialog" id="taskForm">
-        <h3 id="taskModalTitle">New task</h3>
-        <label class="field">
-          <span>Title</span>
-          <input type="text" id="taskTitle" required />
-        </label>
-        <label class="field">
-          <span>Due date</span>
-          <input type="date" id="taskDue" />
-        </label>
-        <label class="field">
-          <span>Priority</span>
-          <select id="taskPriority">
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
-          </select>
-        </label>
-        <menu class="dialog-actions">
-          <button value="cancel" class="btn ghost">Cancel</button>
-          <button value="ok" class="btn primary" id="saveTask">Save</button>
-        </menu>
-      </form>
-    </dialog>
+  <!-- Task modal -->
+  <dialog id="taskModal">
+    <form method="dialog" id="taskForm">
+      <h3 id="taskModalTitle">New task</h3>
+      <label class="field"><span>Title</span><input type="text" id="taskTitle" required /></label>
+      <label class="field"><span>Due date</span><input type="date" id="taskDue" /></label>
+      <label class="field"><span>Priority</span>
+        <select id="taskPriority" class="dropdown">
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <menu class="dialog-actions">
+        <button value="cancel" class="btn ghost">Cancel</button>
+        <button value="ok" class="btn primary" id="saveTask">Save</button>
+      </menu>
+    </form>
+  </dialog>
 
-    <script src="js/charts.js"></script>
-    <script src="js/app.js"></script>
-  </body>
+  <script src="js/charts.js"></script>
+  <script src="js/app.js"></script>
+</body>
 </html>

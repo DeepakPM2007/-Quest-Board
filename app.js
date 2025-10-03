@@ -1,27 +1,21 @@
-/* Cyber Mystic Habits — single-file JS logic (no frameworks)
-   - Auth with username + PIN (hashed via Web Crypto)
-   - Per-user isolated localStorage
-   - Remember-me auto-login
-   - Habits (streaks, forgiveness, pause)
-   - To‑Do (priority, due dates)
-   - XP + levels
-   - Charts (last 60 days, horizontal scroll)
+/* Cyber Mystic — Habits & Tasks (mobile-optimized)
+   - Beautiful dropdowns and multi-theme support (cyber/midnight/sunset)
+   - Secure auth: username + PIN (SHA-256 hash), per-user isolated storage
+   - Remember me for auto-login on the same device
+   - Lists & charts scroll smoothly (touch momentum)
+   - Clean charts with axes, ticks, readable labels
 */
 
 const STORAGE_LAST_USER = "cm_lastUser";
 
 const App = (() => {
-  function todayStr(d = new Date()) {
-    return d.toISOString().slice(0, 10);
-  }
-
   const state = {
     user: null,
     settings: { graceDays: 1, autoPauseAfter: 3, theme: "cyber" },
     habits: [],
     tasks: [],
     logs: {
-      habitDaily: {}, // date -> count
+      habitDaily: {},
       taskDaily: { added: {}, completed: {} },
       forgivenMisses: 0,
     },
@@ -30,7 +24,31 @@ const App = (() => {
     today: todayStr(),
   };
 
-  // ---------- Storage ----------
+  /* ---------- Utilities ---------- */
+  function todayStr(d = new Date()) {
+    return d.toISOString().slice(0, 10);
+  }
+  function uid() {
+    return Math.random().toString(36).slice(2, 9);
+  }
+  function clamp(v, min, max) {
+    return Math.min(max, Math.max(min, v));
+  }
+  function escapeHTML(str) {
+    return str.replace(
+      /[&<>"']/g,
+      (s) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[s])
+    );
+  }
+
+  /* ---------- Storage ---------- */
   function storageKey(username) {
     return `cyberMysticData_${username}`;
   }
@@ -51,31 +69,16 @@ const App = (() => {
     }
   }
   async function hashPIN(pin) {
-    const enc = new TextEncoder().encode(pin);
-    const buf = await crypto.subtle.digest("SHA-256", enc);
+    const buf = await crypto.subtle.digest(
+      "SHA-256",
+      new TextEncoder().encode(pin)
+    );
     return Array.from(new Uint8Array(buf))
       .map((b) => b.toString(16).padStart(2, "0"))
       .join("");
   }
-  function resetAll() {
-    if (!state.user) return;
-    localStorage.removeItem(storageKey(state.user.username));
-    const last = localStorage.getItem(STORAGE_LAST_USER);
-    if (last === state.user.username)
-      localStorage.removeItem(STORAGE_LAST_USER);
-    location.reload();
-  }
 
-  // ---------- XP + levels ----------
-  function addXP(amount) {
-    state.xp += amount;
-    const lvl = Math.floor(1 + Math.pow(state.xp / 100, 0.6)); // gentle curve
-    state.level = Math.max(lvl, 1);
-    updateTopbar();
-    save();
-  }
-
-  // ---------- Auth ----------
+  /* ---------- Auth ---------- */
   async function login(username, pin, remember) {
     const hashed = await hashPIN(pin);
     const existing = load(username);
@@ -101,13 +104,13 @@ const App = (() => {
     }
 
     if (remember) localStorage.setItem(STORAGE_LAST_USER, username);
-
     enterApp();
   }
 
   function enterApp() {
     document.getElementById("auth").classList.remove("active");
     document.getElementById("main").classList.add("active");
+    setTheme(state.settings.theme);
     updateTopbar();
     renderAll();
   }
@@ -115,28 +118,32 @@ const App = (() => {
   function logout() {
     document.getElementById("main").classList.remove("active");
     document.getElementById("auth").classList.add("active");
-    // Do not delete data; clear auto-login if set
     const last = localStorage.getItem(STORAGE_LAST_USER);
     if (last === state.user?.username)
       localStorage.removeItem(STORAGE_LAST_USER);
     state.user = null;
   }
 
-  // ---------- Rendering helpers ----------
-  function updateTopbar() {
-    document.getElementById("dateToday").textContent =
-      new Date().toLocaleDateString(undefined, {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-      });
-    document.getElementById("level").textContent = state.level;
-    document.getElementById("xp").textContent = state.xp;
+  function resetAll() {
+    if (!state.user) return;
+    localStorage.removeItem(storageKey(state.user.username));
+    const last = localStorage.getItem(STORAGE_LAST_USER);
+    if (last === state.user.username)
+      localStorage.removeItem(STORAGE_LAST_USER);
+    location.reload();
   }
 
-  // ---------- Habits ----------
+  /* ---------- XP & Levels ---------- */
+  function addXP(amount) {
+    state.xp += amount;
+    state.level = Math.max(1, Math.floor(1 + Math.pow(state.xp / 100, 0.6)));
+    updateTopbar();
+    save();
+  }
+
+  /* ---------- Habits ---------- */
   function addHabit(habit) {
-    const h = {
+    state.habits.push({
       id: uid(),
       name: habit.name,
       freq: habit.freq,
@@ -144,10 +151,9 @@ const App = (() => {
       start: habit.start || state.today,
       streak: 0,
       paused: false,
-      history: {}, // date -> boolean
+      history: {},
       missesInRow: 0,
-    };
-    state.habits.push(h);
+    });
     save();
     renderHabits();
   }
@@ -171,36 +177,6 @@ const App = (() => {
     renderStats();
   }
 
-  function xpForHabit(diff) {
-    if (diff === "hard") return 18;
-    if (diff === "medium") return 12;
-    return 8;
-  }
-
-  function updateForgiveness() {
-    // Handle soft forgiveness without full streak reset
-    const yesterday = todayStr(new Date(Date.now() - 86400000));
-    state.habits.forEach((h) => {
-      if (h.paused) return;
-      const todayDone = !!h.history[state.today];
-      const yesterdayDone = !!h.history[yesterday];
-      if (!todayDone && !yesterdayDone) {
-        h.missesInRow += 1;
-        const grace = state.settings.graceDays;
-        if (h.missesInRow <= grace) {
-          state.logs.forgivenMisses += 1;
-        } else {
-          h.streak = Math.max(0, Math.floor(h.streak * 0.7));
-        }
-        const autoPauseAfter = state.settings.autoPauseAfter;
-        if (autoPauseAfter > 0 && h.missesInRow >= autoPauseAfter) {
-          h.paused = true;
-        }
-      }
-    });
-    save();
-  }
-
   function editHabit(id, patch) {
     const h = state.habits.find((x) => x.id === id);
     if (!h) return;
@@ -208,26 +184,51 @@ const App = (() => {
     save();
     renderHabits();
   }
-
   function deleteHabit(id) {
-    const idx = state.habits.findIndex((x) => x.id === id);
-    if (idx >= 0) state.habits.splice(idx, 1);
+    const i = state.habits.findIndex((x) => x.id === id);
+    if (i >= 0) state.habits.splice(i, 1);
     save();
     renderHabits();
     renderStats();
   }
 
-  // ---------- Tasks ----------
+  function xpForHabit(diff) {
+    if (diff === "hard") return 18;
+    if (diff === "medium") return 12;
+    return 8;
+  }
+
+  function updateForgiveness() {
+    const yesterday = todayStr(new Date(Date.now() - 86400000));
+    state.habits.forEach((h) => {
+      if (h.paused) return;
+      const todayDone = !!h.history[state.today];
+      const yesterdayDone = !!h.history[yesterday];
+      if (!todayDone && !yesterdayDone) {
+        h.missesInRow += 1;
+        if (h.missesInRow <= state.settings.graceDays)
+          state.logs.forgivenMisses += 1;
+        else h.streak = Math.max(0, Math.floor(h.streak * 0.7));
+        if (
+          state.settings.autoPauseAfter > 0 &&
+          h.missesInRow >= state.settings.autoPauseAfter
+        )
+          h.paused = true;
+      }
+    });
+    save();
+  }
+
+  /* ---------- Tasks ---------- */
   function addTask(task) {
-    const t = {
+    state.tasks.push({
       id: uid(),
       title: task.title,
       due: task.due || null,
       priority: task.priority || "medium",
       done: false,
       created: state.today,
-    };
-    state.tasks.push(t);
+    });
     logTaskAddedToday();
     save();
     renderTasks();
@@ -246,21 +247,20 @@ const App = (() => {
     renderStats();
   }
 
-  function xpForTask(priority) {
-    if (priority === "high") return 16;
-    if (priority === "medium") return 10;
-    return 6;
-  }
-
   function deleteTask(id) {
-    const idx = state.tasks.findIndex((x) => x.id === id);
-    if (idx >= 0) state.tasks.splice(idx, 1);
+    const i = state.tasks.findIndex((x) => x.id === id);
+    if (i >= 0) state.tasks.splice(i, 1);
     save();
     renderTasks();
     renderStats();
   }
+  function xpForTask(p) {
+    if (p === "high") return 16;
+    if (p === "medium") return 10;
+    return 6;
+  }
 
-  // ---------- Logs for charts ----------
+  /* ---------- Logs ---------- */
   function logHabitCompletionToday() {
     const d = state.today;
     state.logs.habitDaily[d] = (state.logs.habitDaily[d] || 0) + 1;
@@ -275,7 +275,18 @@ const App = (() => {
       (state.logs.taskDaily.completed[d] || 0) + 1;
   }
 
-  // ---------- Rendering: tabs & panels ----------
+  /* ---------- Rendering ---------- */
+  function updateTopbar() {
+    document.getElementById("dateToday").textContent =
+      new Date().toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+    document.getElementById("level").textContent = state.level;
+    document.getElementById("xp").textContent = state.xp;
+  }
+
   function switchTab(name) {
     document
       .querySelectorAll(".tab")
@@ -319,31 +330,20 @@ const App = (() => {
         .addEventListener("click", () => deleteHabit(h.id));
     });
   }
-
   function diffRank(d) {
-    if (d === "hard") return 3;
-    if (d === "medium") return 2;
-    return 1;
+    return d === "hard" ? 3 : d === "medium" ? 2 : 1;
   }
 
   function habitCard(h) {
     const todayDone = !!h.history[state.today];
-    const cls = `habit ${h.paused ? "paused" : ""}`;
-    const streakColor = h.paused
-      ? "pause"
-      : h.missesInRow <= state.settings.graceDays
-      ? "success"
-      : "warn";
     return `
-      <div class="${cls}">
+      <div class="habit ${h.paused ? "paused" : ""}">
         <div class="habit-head">
           <div>
             <div class="habit-title">${escapeHTML(h.name)}</div>
             <div class="habit-meta">
               <span>${h.freq}</span>
-              <span class="chip ${streakColor}">streak <strong class="streak">${
-      h.streak
-    }</strong></span>
+              <span>streak <strong class="streak">${h.streak}</strong></span>
               <span>difficulty: ${h.diff}</span>
             </div>
           </div>
@@ -352,9 +352,9 @@ const App = (() => {
     }</button>
         </div>
         <div class="habit-actions">
-          <button id="toggle-${h.id}" class="toggle ${todayDone ? "done" : ""}">
-            ${todayDone ? "Done today" : "Mark done"}
-          </button>
+          <button id="toggle-${h.id}" class="toggle ${
+      todayDone ? "done" : ""
+    }">${todayDone ? "Done today" : "Mark done"}</button>
           <button id="edit-${h.id}" class="btn">Edit</button>
           <button id="del-${
             h.id
@@ -368,10 +368,9 @@ const App = (() => {
     const list = document.getElementById("taskList");
     const view = document.getElementById("taskView").value;
     const sort = document.getElementById("taskSort").value;
-
-    let tasks = [...state.tasks];
     const today = state.today;
 
+    let tasks = [...state.tasks];
     tasks = tasks.filter((t) => {
       if (view === "today") return t.due === today || !t.due;
       if (view === "upcoming") return t.due && t.due >= today;
@@ -396,11 +395,8 @@ const App = (() => {
         .addEventListener("click", () => deleteTask(t.id));
     });
   }
-
   function priorityRank(p) {
-    if (p === "high") return 3;
-    if (p === "medium") return 2;
-    return 1;
+    return p === "high" ? 3 : p === "medium" ? 2 : 1;
   }
 
   function taskItem(t) {
@@ -417,11 +413,9 @@ const App = (() => {
     } />
         <div>
           <div class="title">${escapeHTML(t.title)}</div>
-          <div class="meta">
-            ${
-              t.due ? `Due ${t.due}` : "No due date"
-            } • <span class="${prCls}">${t.priority}</span>
-          </div>
+          <div class="meta">${
+            t.due ? `Due ${t.due}` : "No due date"
+          } • <span class="${prCls}">${t.priority}</span></div>
         </div>
         <button id="task-del-${
           t.id
@@ -430,60 +424,50 @@ const App = (() => {
     `;
   }
 
-  // ---------- Stats ----------
   function renderStats() {
-    // Lifetime stats
-    document.getElementById("bestStreak").textContent = state.habits.reduce(
-      (m, h) => Math.max(m, h.streak),
-      0
-    );
-    document.getElementById("totalHabits").textContent = state.habits.length;
-    document.getElementById("tasksCompleted").textContent = Object.values(
-      state.logs.taskDaily.completed
-    ).reduce((a, b) => a + b, 0);
-    document.getElementById("forgivenMisses").textContent =
-      state.logs.forgivenMisses;
+    const days = rangeDays(60); // chronological order
+    const reversedDays = [...days].reverse(); // for right-to-left display
 
-    // Days range
-    const days = rangeDays(60);
-
-    // Habit chart width & data
     const habitCanvas = document.getElementById("habitChart");
-    habitCanvas.width = Math.max(1200, days.length * 24); // allows horizontal scroll
+    habitCanvas.width = Math.max(1200, reversedDays.length * 28);
     const habitCtx = habitCanvas.getContext("2d");
-    const habitSeries = days.map((d) => state.logs.habitDaily[d] || 0);
-    const streakTrend = days.map(() =>
+
+    const habitSeries = reversedDays.map((d) => state.logs.habitDaily[d] || 0);
+    const streakTrend = reversedDays.map(() =>
       state.habits.reduce((m, h) => Math.max(m, h.streak), 0)
     );
-    Charts.lineChart(habitCtx, habitSeries, {
-      color: "#6cf09a",
-      fill: "rgba(108,240,154,0.12)",
-    });
-    Charts.lineChart(habitCtx, streakTrend, {
+
+    Charts.lineChart(habitCtx, habitSeries, reversedDays, { color: "#6cf09a" });
+    Charts.lineChart(habitCtx, streakTrend, reversedDays, {
       color: "#59f0ff",
-      fill: "rgba(0,0,0,0)",
+      point: 0,
     });
 
-    // Task chart width & data
     const taskCanvas = document.getElementById("taskChart");
-    taskCanvas.width = Math.max(1200, days.length * 24);
+    taskCanvas.width = Math.max(1200, reversedDays.length * 28);
     const taskCtx = taskCanvas.getContext("2d");
-    const addedSeries = days.map((d) => state.logs.taskDaily.added[d] || 0);
-    const completedSeries = days.map(
+
+    const completedSeries = reversedDays.map(
       (d) => state.logs.taskDaily.completed[d] || 0
     );
-    Charts.dualBars(taskCtx, completedSeries, addedSeries);
+    const addedSeries = reversedDays.map(
+      (d) => state.logs.taskDaily.added[d] || 0
+    );
+
+    Charts.barDual(taskCtx, completedSeries, addedSeries, reversedDays, {
+      colorA: "#c48dff",
+      colorB: "#ffb36b",
+    });
   }
 
   function rangeDays(n) {
     const out = [];
-    for (let i = n - 1; i >= 0; i--) {
+    for (let i = n - 1; i >= 0; i--)
       out.push(todayStr(new Date(Date.now() - i * 86400000)));
-    }
     return out;
   }
 
-  // ---------- Starfield ----------
+  /* ---------- Starfield ---------- */
   function starfield() {
     const c = document.getElementById("starfield");
     const ctx = c.getContext("2d");
@@ -506,15 +490,14 @@ const App = (() => {
       requestAnimationFrame(draw);
     }
     draw();
-    window.addEventListener("resize", () => resizeCanvas(c));
+    window.addEventListener("resize", () => resizeCanvas(c), { passive: true });
   }
-
   function resizeCanvas(c) {
     c.width = window.innerWidth;
     c.height = window.innerHeight;
   }
 
-  // ---------- Modals ----------
+  /* ---------- Modals ---------- */
   function openHabitModal(habit = null) {
     const dlg = document.getElementById("habitModal");
     document.getElementById("habitModalTitle").textContent = habit
@@ -526,7 +509,6 @@ const App = (() => {
     document.getElementById("habitStart").value = habit?.start || state.today;
 
     dlg.showModal();
-
     const saveBtn = document.getElementById("saveHabit");
     const handler = (ev) => {
       ev.preventDefault();
@@ -534,14 +516,10 @@ const App = (() => {
       const freq = document.getElementById("habitFreq").value;
       const diff = document.getElementById("habitDiff").value;
       const start = document.getElementById("habitStart").value || state.today;
-
       if (!name) return;
 
-      if (habit) {
-        editHabit(habit.id, { name, freq, diff, start });
-      } else {
-        addHabit({ name, freq, diff, start });
-      }
+      if (habit) editHabit(habit.id, { name, freq, diff, start });
+      else addHabit({ name, freq, diff, start });
       dlg.close();
       saveBtn.removeEventListener("click", handler);
     };
@@ -554,9 +532,7 @@ const App = (() => {
     document.getElementById("taskTitle").value = "";
     document.getElementById("taskDue").value = "";
     document.getElementById("taskPriority").value = "medium";
-
     dlg.showModal();
-
     const saveBtn = document.getElementById("saveTask");
     const handler = (ev) => {
       ev.preventDefault();
@@ -572,109 +548,16 @@ const App = (() => {
     saveBtn.addEventListener("click", handler);
   }
 
-  // ---------- Escape HTML ----------
-  function escapeHTML(str) {
-    return str.replace(
-      /[&<>"']/g,
-      (s) =>
-        ({
-          "&": "&amp;",
-          "<": "&lt;",
-          ">": "&gt;",
-          '"': "&quot;",
-          "'": "&#39;",
-        }[s])
-    );
+  /* ---------- Theme ---------- */
+  function setTheme(name) {
+    document.documentElement.setAttribute("data-theme", name);
   }
 
-  // ---------- UID ----------
-  function uid() {
-    return Math.random().toString(36).slice(2, 9);
-  }
-
-  // ---------- Demo seed ----------
-  function seedDemo() {
-    state.user = { username: "demo", pinHash: "demo", remember: true };
-    state.habits = [
-      {
-        id: uid(),
-        name: "Morning stretch",
-        freq: "daily",
-        diff: "easy",
-        start: state.today,
-        streak: 3,
-        paused: false,
-        history: { [state.today]: true },
-        missesInRow: 0,
-      },
-      {
-        id: uid(),
-        name: "Code for 60 min",
-        freq: "daily",
-        diff: "hard",
-        start: state.today,
-        streak: 7,
-        paused: false,
-        history: { [state.today]: false },
-        missesInRow: 1,
-      },
-      {
-        id: uid(),
-        name: "Read 10 pages",
-        freq: "daily",
-        diff: "medium",
-        start: state.today,
-        streak: 5,
-        paused: false,
-        history: {},
-        missesInRow: 2,
-      },
-    ];
-    state.tasks = [
-      {
-        id: uid(),
-        title: "Ship v0 UI polish",
-        due: state.today,
-        priority: "high",
-        done: false,
-        created: state.today,
-      },
-      {
-        id: uid(),
-        title: "Email beta testers",
-        due: null,
-        priority: "medium",
-        done: false,
-        created: state.today,
-      },
-      {
-        id: uid(),
-        title: "Refactor storage",
-        due: state.today,
-        priority: "low",
-        done: true,
-        created: state.today,
-      },
-    ];
-    // Seed logs for charts
-    for (let i = 0; i < 10; i++) {
-      const d = todayStr(new Date(Date.now() - i * 86400000));
-      state.logs.habitDaily[d] = Math.floor(Math.random() * 4);
-      state.logs.taskDaily.added[d] = Math.floor(Math.random() * 3);
-      state.logs.taskDaily.completed[d] = Math.floor(Math.random() * 3);
-    }
-    state.xp = 120;
-    state.level = 3;
-    save();
-  }
-
-  // ---------- Init ----------
+  /* ---------- Init ---------- */
   function init() {
     starfield();
-    document.getElementById("dateToday").textContent =
-      new Date().toDateString();
 
-    // Auto-login if remembered user exists
+    // Auto-login if remembered:
     const lastUser = localStorage.getItem(STORAGE_LAST_USER);
     if (lastUser) {
       const data = load(lastUser);
@@ -683,6 +566,9 @@ const App = (() => {
         enterApp();
       }
     }
+
+    document.getElementById("dateToday").textContent =
+      new Date().toLocaleDateString();
 
     // Auth events
     document
@@ -694,7 +580,6 @@ const App = (() => {
         const remember = document.getElementById("remember").checked;
         if (!username || pin.length !== 4) return;
         await login(username, pin, remember);
-        if (remember) localStorage.setItem(STORAGE_LAST_USER, username);
       });
     document.getElementById("quickDemo").addEventListener("click", () => {
       seedDemo();
@@ -704,9 +589,11 @@ const App = (() => {
     document.getElementById("logout").addEventListener("click", logout);
 
     // Tabs
-    document.querySelectorAll(".tab").forEach((btn) => {
-      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
-    });
+    document
+      .querySelectorAll(".tab")
+      .forEach((btn) =>
+        btn.addEventListener("click", () => switchTab(btn.dataset.tab))
+      );
 
     // Filters
     document
@@ -718,7 +605,7 @@ const App = (() => {
     document.getElementById("taskView").addEventListener("change", renderTasks);
     document.getElementById("taskSort").addEventListener("change", renderTasks);
 
-    // Modals
+    // Actions
     document
       .getElementById("addHabit")
       .addEventListener("click", () => openHabitModal());
@@ -749,17 +636,20 @@ const App = (() => {
       save();
     });
 
-    setTheme(state.settings.theme);
+    // Mobile keyboard avoidance
+    window.addEventListener(
+      "resize",
+      () => {
+        const el = document.activeElement;
+        if (el && (el.tagName === "INPUT" || el.tagName === "SELECT")) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      },
+      { passive: true }
+    );
+
     updateForgiveness();
     renderAll();
-  }
-
-  function clamp(v, min, max) {
-    return Math.min(max, Math.max(min, v));
-  }
-
-  function setTheme(name) {
-    document.documentElement.setAttribute("data-theme", name);
   }
 
   function renderAll() {
@@ -768,9 +658,82 @@ const App = (() => {
     renderStats();
   }
 
-  // Start
+  /* ---------- Demo seed (for quick testing) ---------- */
+  function seedDemo() {
+    state.user = { username: "demo", pinHash: "demo", remember: true };
+    state.habits = [
+      {
+        id: uid(),
+        name: "Morning stretch",
+        freq: "daily",
+        diff: "easy",
+        start: state.today,
+        streak: 3,
+        paused: false,
+        history: { [state.today]: true },
+        missesInRow: 0,
+      },
+      {
+        id: uid(),
+        name: "Code for 60 min",
+        freq: "daily",
+        diff: "hard",
+        start: state.today,
+        streak: 7,
+        paused: false,
+        history: {},
+        missesInRow: 1,
+      },
+      {
+        id: uid(),
+        name: "Read 10 pages",
+        freq: "daily",
+        diff: "medium",
+        start: state.today,
+        streak: 5,
+        paused: false,
+        history: {},
+        missesInRow: 2,
+      },
+    ];
+    state.tasks = [
+      {
+        id: uid(),
+        title: "Ship UI polish",
+        due: state.today,
+        priority: "high",
+        done: false,
+        created: state.today,
+      },
+      {
+        id: uid(),
+        title: "Email testers",
+        due: null,
+        priority: "medium",
+        done: false,
+        created: state.today,
+      },
+      {
+        id: uid(),
+        title: "Refactor storage",
+        due: state.today,
+        priority: "low",
+        done: true,
+        created: state.today,
+      },
+    ];
+    for (let i = 0; i < 12; i++) {
+      const d = todayStr(new Date(Date.now() - i * 86400000));
+      state.logs.habitDaily[d] = Math.floor(Math.random() * 4);
+      state.logs.taskDaily.added[d] = Math.floor(Math.random() * 3);
+      state.logs.taskDaily.completed[d] = Math.floor(Math.random() * 3);
+    }
+    state.xp = 120;
+    state.level = 3;
+    save();
+  }
+
   document.addEventListener("DOMContentLoaded", init);
 
-  // Public API (optional)
   return { state };
 })();

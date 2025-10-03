@@ -1,8 +1,8 @@
 :root {
   --bg: #0b0f18;
   --panel: rgba(20, 24, 34, 0.7);
-  --card: rgba(22, 26, 38, 0.5);
   --surface: rgba(26, 32, 46, 0.6);
+  --card: rgba(22, 26, 38, 0.5);
   --border: rgba(255, 255, 255, 0.08);
   --text: #e8eeff;
   --muted: #9fb0d0;
@@ -11,11 +11,32 @@
   --success: #6cf09a;
   --warn: #ffd65a;
   --danger: #ff6b7b;
-
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
   --radius: 16px;
   --blur: 24px;
+}
+
+/* Themes */
+[data-theme="cyber"] {
+  --bg: #0b0f18;
+  --surface: rgba(26, 32, 46, 0.6);
+  --primary: #59f0ff;
+  --primary-2: #7b57ff;
+}
+[data-theme="midnight"] {
+  --bg: #121212;
+  --surface: #1e1e1e;
+  --card: #181818;
+  --primary: #bb86fc;
+  --primary-2: #03dac6;
+}
+[data-theme="sunset"] {
+  --bg: #2c1b2f;
+  --surface: #3a243b;
+  --card: #342036;
+  --primary: #ff6b7b;
+  --primary-2: #ffd65a;
 }
 
 * {
@@ -27,17 +48,17 @@ body {
 }
 body {
   margin: 0;
-  font: 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue",
-    Arial, "Noto Sans", "Liberation Sans", sans-serif;
+  font: 16px/1.5 system-ui, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
   background: var(--bg);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
-
-/* Background + effects */
 #bg {
   position: fixed;
   inset: 0;
+  z-index: 0;
   background: radial-gradient(
       800px 800px at 10% 90%,
       rgba(123, 87, 255, 0.25),
@@ -49,8 +70,6 @@ body {
       transparent 60%
     ),
     linear-gradient(15deg, #0b0f18, #0e1320 40%, #0b0f18);
-  filter: saturate(1.2);
-  z-index: 0;
 }
 #starfield {
   position: fixed;
@@ -59,7 +78,6 @@ body {
   pointer-events: none;
 }
 
-/* App wrapper */
 #app {
   position: relative;
   z-index: 2;
@@ -89,7 +107,6 @@ body {
 }
 .brand h1 {
   font-weight: 700;
-  letter-spacing: 0.8px;
   background: linear-gradient(90deg, var(--primary), var(--primary-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -100,8 +117,6 @@ body {
   color: var(--muted);
   margin: 0;
 }
-
-/* Orb */
 .logo-orb,
 .logo-orb.small {
   width: 56px;
@@ -146,14 +161,13 @@ select {
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 10px 12px;
+  padding: 12px 14px;
   border-radius: 12px;
-  outline: none;
-  transition: border 150ms ease, box-shadow 150ms ease;
 }
 input:focus,
 select:focus {
-  border-color: rgba(89, 240, 255, 0.6);
+  outline: none;
+  border-color: rgba(89, 240, 255, 0.5);
   box-shadow: 0 0 0 6px rgba(89, 240, 255, 0.08);
 }
 
@@ -162,19 +176,32 @@ select:focus {
   gap: 10px;
   margin-top: 10px;
 }
+.meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .btn {
   background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 12px;
   cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease,
-    border-color 120ms ease;
+  transition: transform 120ms ease, border-color 120ms ease;
+  min-height: 44px;
+  font-size: 16px;
 }
 .btn:hover {
   transform: translateY(-1px);
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 .btn.primary {
   background: linear-gradient(
@@ -196,17 +223,23 @@ select:focus {
   cursor: pointer;
 }
 
-/* Meta row */
-.meta-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: 6px;
+/* Beautiful dropdowns */
+.dropdown {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 16px;
+  color: var(--text);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239fb0d0' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
 }
-.remember {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.dropdown:focus {
+  border-color: rgba(89, 240, 255, 0.6);
+  box-shadow: 0 0 0 6px rgba(89, 240, 255, 0.08);
 }
 
 /* Views */
@@ -221,11 +254,11 @@ select:focus {
   width: 100%;
 }
 
-/* Topbar */
+/* Topbar & tabs */
 .topbar {
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
   width: min(1200px, 96vw);
   margin: 0 auto 12px;
 }
@@ -239,23 +272,11 @@ select:focus {
   align-items: center;
   gap: 10px;
 }
-.topbar h2 {
-  margin: 0 4px;
-  font-weight: 600;
-}
-#dateToday {
-  color: var(--muted);
-}
-.xp {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
+#dateToday,
 .xp .label {
   color: var(--muted);
 }
 
-/* Tabs */
 .tabs {
   display: flex;
   gap: 10px;
@@ -265,7 +286,6 @@ select:focus {
 .tab {
   background: var(--surface);
   border: 1px solid var(--border);
-  color: var(--text);
   padding: 10px 14px;
   border-radius: 12px;
   cursor: pointer;
@@ -279,13 +299,14 @@ select:focus {
   border-color: rgba(89, 240, 255, 0.4);
 }
 
-/* Panels with scrolling */
+/* Panels (scrollable) */
 .panel {
   width: min(1200px, 96vw);
   margin: 10px auto 0;
-  height: calc(100vh - 184px); /* account for topbar + tabs + margins */
-  overflow-y: auto; /* vertical scrolling for long lists */
-  padding-right: 8px; /* avoid scrollbar overlay */
+  height: calc(100vh - 184px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 8px;
   display: none;
 }
 .panel.active {
@@ -303,7 +324,7 @@ select:focus {
   gap: 10px;
 }
 
-/* Grids + lists */
+/* Lists */
 .grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -317,17 +338,17 @@ select:focus {
 @media (max-width: 640px) {
   .grid {
     grid-template-columns: 1fr;
+    padding: 0 12px;
   }
 }
-
 .list {
   display: grid;
-  gap: 8px;
+  gap: 10px;
+  padding: 0 2px;
 }
 
 /* Habit card */
 .habit {
-  position: relative;
   padding: 12px;
   border-radius: 14px;
   background: var(--surface);
@@ -353,14 +374,6 @@ select:focus {
   gap: 8px;
   margin-top: 10px;
 }
-.habit .streak {
-  font-weight: 700;
-  color: var(--success);
-}
-.habit.paused .streak {
-  color: var(--muted);
-}
-
 .toggle {
   display: inline-flex;
   align-items: center;
@@ -370,10 +383,11 @@ select:focus {
   border: 1px solid var(--border);
   background: rgba(60, 70, 90, 0.4);
   cursor: pointer;
-  user-select: none;
+  min-height: 44px;
+  font-size: 16px;
 }
 .toggle.done {
-  background: rgba(108, 240, 154, 0.2);
+  background: rgba(108, 240, 154, 0.18);
   border-color: rgba(108, 240, 154, 0.4);
 }
 
@@ -394,35 +408,29 @@ select:focus {
 .task .meta {
   color: var(--muted);
 }
-.task .priority-high {
+.priority-high {
   color: var(--danger);
 }
-.task .priority-medium {
+.priority-medium {
   color: var(--warn);
 }
-.task .priority-low {
+.priority-low {
   color: var(--success);
 }
 
-/* Charts: horizontal scroll support */
+/* Charts */
 .chart-card {
   padding: 12px;
 }
 .chart-scroll {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .chart-scroll canvas {
   min-width: 1200px;
-} /* enables horizontal scrolling for long timelines */
+}
 
-.stat-card .stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-}
-.stat-card .label {
-  color: var(--muted);
-}
+/* Legends */
 .legend-row {
   display: flex;
   align-items: center;
@@ -431,10 +439,10 @@ select:focus {
   margin-top: 6px;
 }
 .legend-dot {
-  display: inline-block;
   width: 10px;
   height: 10px;
   border-radius: 50%;
+  display: inline-block;
 }
 .legend-dot.green {
   background: #6cf09a;
@@ -449,6 +457,18 @@ select:focus {
   background: #ffb36b;
 }
 
+/* Settings grid */
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+@media (max-width: 800px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Dialogs */
 dialog {
   border: 1px solid var(--border);
@@ -457,6 +477,8 @@ dialog {
   border-radius: 14px;
   padding: 16px;
   box-shadow: var(--shadow);
+  width: 90vw;
+  max-width: 420px;
 }
 dialog::backdrop {
   background: rgba(0, 0, 0, 0.6);
@@ -467,7 +489,22 @@ dialog::backdrop {
   margin-top: 8px;
 }
 
-/* Utility */
-.hidden {
-  display: none !important;
+.tab {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 12px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.tab:hover {
+  box-shadow: 0 0 8px rgba(89,240,255,0.3);
+}
+.tab.active {
+  background: linear-gradient(90deg, rgba(89,240,255,0.25), rgba(123,87,255,0.25));
+  border-color: rgba(89,240,255,0.4);
+  color: #fff;
 }
