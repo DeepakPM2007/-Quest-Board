@@ -1,7 +1,7 @@
 // Lightweight canvas chart utilities (no external libs)
 
 const Charts = (() => {
-  function scale(value, min, max, height, pad = 20) {
+  function scale(value, min, max, height, pad = 24) {
     if (max === min) return height - pad;
     return height - pad - ((value - min) / (max - min)) * (height - pad * 2);
   }
@@ -13,8 +13,8 @@ const Charts = (() => {
     const fill = opts.fill ?? "rgba(89,240,255,0.12)";
     const grid = opts.grid ?? true;
 
-    const min = Math.min(...data);
-    const max = Math.max(...data);
+    const min = Math.min(...data, 0);
+    const max = Math.max(...data, 1);
 
     ctx.clearRect(0, 0, width, height);
 
@@ -67,7 +67,7 @@ const Charts = (() => {
     const colorA = opts.colorA ?? "#c48dff";
     const colorB = opts.colorB ?? "#ffb36b";
 
-    const max = Math.max(Math.max(...seriesA), Math.max(...seriesB));
+    const max = Math.max(Math.max(...seriesA, 0), Math.max(...seriesB, 0));
     ctx.clearRect(0, 0, width, height);
 
     // Axis

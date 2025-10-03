@@ -160,26 +160,18 @@ input:focus, select:focus {
   border-color: rgba(89,240,255,0.4);
 }
 
-/* Panels */
+/* Panels with scrolling */
 .panel {
   width: min(1200px, 96vw);
   margin: 10px auto 0;
+  height: calc(100vh - 184px); /* account for topbar + tabs + margins */
+  overflow-y: auto;            /* vertical scrolling for long lists */
+  padding-right: 8px;          /* avoid scrollbar overlay */
   display: none;
 }
 .panel.active { display: block }
-.panel-head {
-  display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;
-}
-
-/* Chips */
-.chip {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--muted); font-size: 12px;
-}
-.chip.success { color: var(--success) }
-.chip.warn { color: var(--warn) }
-.chip.pause { color: var(--muted) }
+.panel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px }
+.panel-actions { display: flex; align-items: center; gap: 10px }
 
 /* Grids + lists */
 .grid {
@@ -225,8 +217,11 @@ input:focus, select:focus {
 .task .priority-medium { color: var(--warn) }
 .task .priority-low { color: var(--success) }
 
-/* Charts */
+/* Charts: horizontal scroll support */
 .chart-card { padding: 12px }
+.chart-scroll { overflow-x: auto }
+.chart-scroll canvas { min-width: 1200px } /* enables horizontal scrolling for long timelines */
+
 .stat-card .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px }
 .stat-card .label { color: var(--muted) }
 .legend-row { display: flex; align-items: center; gap: 8px; color: var(--muted); margin-top: 6px }
@@ -247,12 +242,6 @@ dialog {
 }
 dialog::backdrop { background: rgba(0,0,0,0.6) }
 .dialog-actions { display: flex; gap: 8px; margin-top: 8px }
-
-/* Particles */
-@keyframes floaty {
-  from { transform: translateY(0) }
-  to { transform: translateY(-4px) }
-}
 
 /* Utility */
 .hidden { display: none !important }

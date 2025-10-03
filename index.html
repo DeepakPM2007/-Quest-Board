@@ -34,8 +34,8 @@
           </label>
 
           <div class="actions">
-            <button type="submit" class="btn primary">Enter realm</button>
-            <button type="button" id="quickDemo" class="btn ghost">Try demo</button>
+            <button type="submit" class="btn primary">Enter</button>
+            <button type="button" id="quickDemo" class="btn ghost">Demo</button>
           </div>
 
           <div class="meta-row">
@@ -43,13 +43,9 @@
               <input type="checkbox" id="remember" />
               <span>Remember me</span>
             </label>
-            <button type="button" id="resetAll" class="link danger">Reset all</button>
+            <button type="button" id="resetAll" class="link danger">Reset my data</button>
           </div>
         </form>
-
-        <div class="legal">
-          <small>By entering, you agree to keep going—even when you miss a day.</small>
-        </div>
       </div>
     </section>
 
@@ -83,11 +79,8 @@
       <div id="panel-habits" class="panel active">
         <div class="panel-head">
           <h3>Habits</h3>
-          <button id="addHabit" class="btn primary">New habit</button>
-        </div>
-
-        <div class="filters">
-          <div class="filter-group">
+          <div class="panel-actions">
+            <button id="addHabit" class="btn primary">New habit</button>
             <label class="field compact">
               <span>View</span>
               <select id="habitView">
@@ -104,11 +97,6 @@
               </select>
             </label>
           </div>
-          <div class="streak-legend">
-            <span class="chip success">On track</span>
-            <span class="chip warn">Recovering</span>
-            <span class="chip pause">Paused</span>
-          </div>
         </div>
 
         <div id="habitList" class="grid"></div>
@@ -118,11 +106,8 @@
       <div id="panel-tasks" class="panel">
         <div class="panel-head">
           <h3>To‑Do</h3>
-          <button id="addTask" class="btn primary">New task</button>
-        </div>
-
-        <div class="filters">
-          <div class="filter-group">
+          <div class="panel-actions">
+            <button id="addTask" class="btn primary">New task</button>
             <label class="field compact">
               <span>View</span>
               <select id="taskView">
@@ -140,11 +125,6 @@
               </select>
             </label>
           </div>
-          <div class="task-legend">
-            <span class="chip priority-high">High</span>
-            <span class="chip priority-med">Medium</span>
-            <span class="chip priority-low">Low</span>
-          </div>
         </div>
 
         <div id="taskList" class="list"></div>
@@ -158,8 +138,10 @@
 
         <div class="stats-grid">
           <div class="card chart-card">
-            <h4>Habit completion (last 30 days)</h4>
-            <canvas id="habitChart" width="600" height="260"></canvas>
+            <h4>Habit completion (last 60 days)</h4>
+            <div class="chart-scroll">
+              <canvas id="habitChart" height="240"></canvas>
+            </div>
             <div class="legend-row">
               <span class="legend-dot green"></span><span>Completions</span>
               <span class="legend-dot blue"></span><span>Streak trend</span>
@@ -167,8 +149,10 @@
           </div>
 
           <div class="card chart-card">
-            <h4>Task throughput (last 30 days)</h4>
-            <canvas id="taskChart" width="600" height="260"></canvas>
+            <h4>Task throughput (last 60 days)</h4>
+            <div class="chart-scroll">
+              <canvas id="taskChart" height="240"></canvas>
+            </div>
             <div class="legend-row">
               <span class="legend-dot purple"></span><span>Completed</span>
               <span class="legend-dot orange"></span><span>Added</span>
