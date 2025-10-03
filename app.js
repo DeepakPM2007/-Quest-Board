@@ -36,23 +36,33 @@ const App = (() => {
   }
   function save() {
     if (!state.user) return;
-    localStorage.setItem(storageKey(state.user.username), JSON.stringify(state));
+    localStorage.setItem(
+      storageKey(state.user.username),
+      JSON.stringify(state)
+    );
   }
   function load(username) {
     const raw = localStorage.getItem(storageKey(username));
     if (!raw) return null;
-    try { return JSON.parse(raw); } catch { return null; }
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
   async function hashPIN(pin) {
     const enc = new TextEncoder().encode(pin);
     const buf = await crypto.subtle.digest("SHA-256", enc);
-    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
+    return Array.from(new Uint8Array(buf))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
   }
   function resetAll() {
     if (!state.user) return;
     localStorage.removeItem(storageKey(state.user.username));
     const last = localStorage.getItem(STORAGE_LAST_USER);
-    if (last === state.user.username) localStorage.removeItem(STORAGE_LAST_USER);
+    if (last === state.user.username)
+      localStorage.removeItem(STORAGE_LAST_USER);
     location.reload();
   }
 
@@ -80,7 +90,11 @@ const App = (() => {
       state.user = { username, pinHash: hashed, remember };
       state.habits = [];
       state.tasks = [];
-      state.logs = { habitDaily: {}, taskDaily: { added: {}, completed: {} }, forgivenMisses: 0 };
+      state.logs = {
+        habitDaily: {},
+        taskDaily: { added: {}, completed: {} },
+        forgivenMisses: 0,
+      };
       state.xp = 0;
       state.level = 1;
       save();
@@ -103,15 +117,19 @@ const App = (() => {
     document.getElementById("auth").classList.add("active");
     // Do not delete data; clear auto-login if set
     const last = localStorage.getItem(STORAGE_LAST_USER);
-    if (last === state.user?.username) localStorage.removeItem(STORAGE_LAST_USER);
+    if (last === state.user?.username)
+      localStorage.removeItem(STORAGE_LAST_USER);
     state.user = null;
   }
 
   // ---------- Rendering helpers ----------
   function updateTopbar() {
-    document.getElementById("dateToday").textContent = new Date().toLocaleDateString(undefined, {
-      weekday: "short", month: "short", day: "numeric"
-    });
+    document.getElementById("dateToday").textContent =
+      new Date().toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
     document.getElementById("level").textContent = state.level;
     document.getElementById("xp").textContent = state.xp;
   }
@@ -135,7 +153,7 @@ const App = (() => {
   }
 
   function toggleHabitDone(id) {
-    const h = state.habits.find(x => x.id === id);
+    const h = state.habits.find((x) => x.id === id);
     if (!h) return;
     const done = !!h.history[state.today];
     if (done) {
@@ -162,7 +180,7 @@ const App = (() => {
   function updateForgiveness() {
     // Handle soft forgiveness without full streak reset
     const yesterday = todayStr(new Date(Date.now() - 86400000));
-    state.habits.forEach(h => {
+    state.habits.forEach((h) => {
       if (h.paused) return;
       const todayDone = !!h.history[state.today];
       const yesterdayDone = !!h.history[yesterday];
@@ -184,7 +202,7 @@ const App = (() => {
   }
 
   function editHabit(id, patch) {
-    const h = state.habits.find(x => x.id === id);
+    const h = state.habits.find((x) => x.id === id);
     if (!h) return;
     Object.assign(h, patch);
     save();
@@ -192,7 +210,7 @@ const App = (() => {
   }
 
   function deleteHabit(id) {
-    const idx = state.habits.findIndex(x => x.id === id);
+    const idx = state.habits.findIndex((x) => x.id === id);
     if (idx >= 0) state.habits.splice(idx, 1);
     save();
     renderHabits();
@@ -216,7 +234,7 @@ const App = (() => {
   }
 
   function toggleTask(id) {
-    const t = state.tasks.find(x => x.id === id);
+    const t = state.tasks.find((x) => x.id === id);
     if (!t) return;
     t.done = !t.done;
     if (t.done) {
@@ -235,7 +253,7 @@ const App = (() => {
   }
 
   function deleteTask(id) {
-    const idx = state.tasks.findIndex(x => x.id === id);
+    const idx = state.tasks.findIndex((x) => x.id === id);
     if (idx >= 0) state.tasks.splice(idx, 1);
     save();
     renderTasks();
@@ -253,13 +271,18 @@ const App = (() => {
   }
   function logTaskCompletedToday() {
     const d = state.today;
-    state.logs.taskDaily.completed[d] = (state.logs.taskDaily.completed[d] || 0) + 1;
+    state.logs.taskDaily.completed[d] =
+      (state.logs.taskDaily.completed[d] || 0) + 1;
   }
 
   // ---------- Rendering: tabs & panels ----------
   function switchTab(name) {
-    document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
-    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    document
+      .querySelectorAll(".tab")
+      .forEach((t) => t.classList.toggle("active", t.dataset.tab === name));
+    document
+      .querySelectorAll(".panel")
+      .forEach((p) => p.classList.remove("active"));
     document.getElementById(`panel-${name}`).classList.add("active");
   }
 
@@ -269,7 +292,7 @@ const App = (() => {
     const sort = document.getElementById("habitSort").value;
 
     let habits = [...state.habits];
-    if (view === "today") habits = habits.filter(h => !h.paused);
+    if (view === "today") habits = habits.filter((h) => !h.paused);
 
     habits.sort((a, b) => {
       if (sort === "streak") return b.streak - a.streak;
@@ -279,11 +302,21 @@ const App = (() => {
     });
 
     list.innerHTML = habits.map(habitCard).join("");
-    habits.forEach(h => {
-      document.getElementById(`toggle-${h.id}`).addEventListener("click", () => toggleHabitDone(h.id));
-      document.getElementById(`pause-${h.id}`).addEventListener("click", () => editHabit(h.id, { paused: !h.paused }));
-      document.getElementById(`edit-${h.id}`).addEventListener("click", () => openHabitModal(h));
-      document.getElementById(`del-${h.id}`).addEventListener("click", () => deleteHabit(h.id));
+    habits.forEach((h) => {
+      document
+        .getElementById(`toggle-${h.id}`)
+        .addEventListener("click", () => toggleHabitDone(h.id));
+      document
+        .getElementById(`pause-${h.id}`)
+        .addEventListener("click", () =>
+          editHabit(h.id, { paused: !h.paused })
+        );
+      document
+        .getElementById(`edit-${h.id}`)
+        .addEventListener("click", () => openHabitModal(h));
+      document
+        .getElementById(`del-${h.id}`)
+        .addEventListener("click", () => deleteHabit(h.id));
     });
   }
 
@@ -296,7 +329,11 @@ const App = (() => {
   function habitCard(h) {
     const todayDone = !!h.history[state.today];
     const cls = `habit ${h.paused ? "paused" : ""}`;
-    const streakColor = h.paused ? "pause" : h.missesInRow <= state.settings.graceDays ? "success" : "warn";
+    const streakColor = h.paused
+      ? "pause"
+      : h.missesInRow <= state.settings.graceDays
+      ? "success"
+      : "warn";
     return `
       <div class="${cls}">
         <div class="habit-head">
@@ -304,18 +341,24 @@ const App = (() => {
             <div class="habit-title">${escapeHTML(h.name)}</div>
             <div class="habit-meta">
               <span>${h.freq}</span>
-              <span class="chip ${streakColor}">streak <strong class="streak">${h.streak}</strong></span>
+              <span class="chip ${streakColor}">streak <strong class="streak">${
+      h.streak
+    }</strong></span>
               <span>difficulty: ${h.diff}</span>
             </div>
           </div>
-          <button id="pause-${h.id}" class="btn ghost">${h.paused ? "Resume" : "Pause"}</button>
+          <button id="pause-${h.id}" class="btn ghost">${
+      h.paused ? "Resume" : "Pause"
+    }</button>
         </div>
         <div class="habit-actions">
           <button id="toggle-${h.id}" class="toggle ${todayDone ? "done" : ""}">
             ${todayDone ? "Done today" : "Mark done"}
           </button>
           <button id="edit-${h.id}" class="btn">Edit</button>
-          <button id="del-${h.id}" class="btn" style="color: var(--danger)">Delete</button>
+          <button id="del-${
+            h.id
+          }" class="btn" style="color: var(--danger)">Delete</button>
         </div>
       </div>
     `;
@@ -329,23 +372,28 @@ const App = (() => {
     let tasks = [...state.tasks];
     const today = state.today;
 
-    tasks = tasks.filter(t => {
+    tasks = tasks.filter((t) => {
       if (view === "today") return t.due === today || !t.due;
       if (view === "upcoming") return t.due && t.due >= today;
       return true;
     });
 
     tasks.sort((a, b) => {
-      if (sort === "priority") return priorityRank(b.priority) - priorityRank(a.priority);
+      if (sort === "priority")
+        return priorityRank(b.priority) - priorityRank(a.priority);
       if (sort === "due") return (a.due || "").localeCompare(b.due || "");
       if (sort === "name") return a.title.localeCompare(b.title);
       return 0;
     });
 
     list.innerHTML = tasks.map(taskItem).join("");
-    tasks.forEach(t => {
-      document.getElementById(`task-toggle-${t.id}`).addEventListener("click", () => toggleTask(t.id));
-      document.getElementById(`task-del-${t.id}`).addEventListener("click", () => deleteTask(t.id));
+    tasks.forEach((t) => {
+      document
+        .getElementById(`task-toggle-${t.id}`)
+        .addEventListener("click", () => toggleTask(t.id));
+      document
+        .getElementById(`task-del-${t.id}`)
+        .addEventListener("click", () => deleteTask(t.id));
     });
   }
 
@@ -357,18 +405,27 @@ const App = (() => {
 
   function taskItem(t) {
     const prCls =
-      t.priority === "high" ? "priority-high" :
-      t.priority === "medium" ? "priority-medium" : "priority-low";
+      t.priority === "high"
+        ? "priority-high"
+        : t.priority === "medium"
+        ? "priority-medium"
+        : "priority-low";
     return `
       <div class="task">
-        <input type="checkbox" id="task-toggle-${t.id}" ${t.done ? "checked" : ""} />
+        <input type="checkbox" id="task-toggle-${t.id}" ${
+      t.done ? "checked" : ""
+    } />
         <div>
           <div class="title">${escapeHTML(t.title)}</div>
           <div class="meta">
-            ${t.due ? `Due ${t.due}` : "No due date"} • <span class="${prCls}">${t.priority}</span>
+            ${
+              t.due ? `Due ${t.due}` : "No due date"
+            } • <span class="${prCls}">${t.priority}</span>
           </div>
         </div>
-        <button id="task-del-${t.id}" class="btn ghost" style="color: var(--danger)">Delete</button>
+        <button id="task-del-${
+          t.id
+        }" class="btn ghost" style="color: var(--danger)">Delete</button>
       </div>
     `;
   }
@@ -376,12 +433,16 @@ const App = (() => {
   // ---------- Stats ----------
   function renderStats() {
     // Lifetime stats
-    document.getElementById("bestStreak").textContent =
-      state.habits.reduce((m, h) => Math.max(m, h.streak), 0);
+    document.getElementById("bestStreak").textContent = state.habits.reduce(
+      (m, h) => Math.max(m, h.streak),
+      0
+    );
     document.getElementById("totalHabits").textContent = state.habits.length;
-    document.getElementById("tasksCompleted").textContent =
-      Object.values(state.logs.taskDaily.completed).reduce((a, b) => a + b, 0);
-    document.getElementById("forgivenMisses").textContent = state.logs.forgivenMisses;
+    document.getElementById("tasksCompleted").textContent = Object.values(
+      state.logs.taskDaily.completed
+    ).reduce((a, b) => a + b, 0);
+    document.getElementById("forgivenMisses").textContent =
+      state.logs.forgivenMisses;
 
     // Days range
     const days = rangeDays(60);
@@ -390,19 +451,27 @@ const App = (() => {
     const habitCanvas = document.getElementById("habitChart");
     habitCanvas.width = Math.max(1200, days.length * 24); // allows horizontal scroll
     const habitCtx = habitCanvas.getContext("2d");
-    const habitSeries = days.map(d => state.logs.habitDaily[d] || 0);
+    const habitSeries = days.map((d) => state.logs.habitDaily[d] || 0);
     const streakTrend = days.map(() =>
       state.habits.reduce((m, h) => Math.max(m, h.streak), 0)
     );
-    Charts.lineChart(habitCtx, habitSeries, { color: "#6cf09a", fill: "rgba(108,240,154,0.12)" });
-    Charts.lineChart(habitCtx, streakTrend, { color: "#59f0ff", fill: "rgba(0,0,0,0)" });
+    Charts.lineChart(habitCtx, habitSeries, {
+      color: "#6cf09a",
+      fill: "rgba(108,240,154,0.12)",
+    });
+    Charts.lineChart(habitCtx, streakTrend, {
+      color: "#59f0ff",
+      fill: "rgba(0,0,0,0)",
+    });
 
     // Task chart width & data
     const taskCanvas = document.getElementById("taskChart");
     taskCanvas.width = Math.max(1200, days.length * 24);
     const taskCtx = taskCanvas.getContext("2d");
-    const addedSeries = days.map(d => state.logs.taskDaily.added[d] || 0);
-    const completedSeries = days.map(d => state.logs.taskDaily.completed[d] || 0);
+    const addedSeries = days.map((d) => state.logs.taskDaily.added[d] || 0);
+    const completedSeries = days.map(
+      (d) => state.logs.taskDaily.completed[d] || 0
+    );
     Charts.dualBars(taskCtx, completedSeries, addedSeries);
   }
 
@@ -423,11 +492,11 @@ const App = (() => {
       x: Math.random() * c.width,
       y: Math.random() * c.height,
       r: Math.random() * 1.2 + 0.2,
-      s: Math.random() * 0.4 + 0.1
+      s: Math.random() * 0.4 + 0.1,
     }));
     function draw() {
       ctx.clearRect(0, 0, c.width, c.height);
-      stars.forEach(st => {
+      stars.forEach((st) => {
         ctx.globalAlpha = 0.6 + Math.sin(Date.now() * 0.001 * st.s) * 0.3;
         ctx.fillStyle = "#9ad8ff";
         ctx.beginPath();
@@ -448,7 +517,9 @@ const App = (() => {
   // ---------- Modals ----------
   function openHabitModal(habit = null) {
     const dlg = document.getElementById("habitModal");
-    document.getElementById("habitModalTitle").textContent = habit ? "Edit habit" : "New habit";
+    document.getElementById("habitModalTitle").textContent = habit
+      ? "Edit habit"
+      : "New habit";
     document.getElementById("habitName").value = habit?.name || "";
     document.getElementById("habitFreq").value = habit?.freq || "daily";
     document.getElementById("habitDiff").value = habit?.diff || "easy";
@@ -491,7 +562,8 @@ const App = (() => {
       ev.preventDefault();
       const title = document.getElementById("taskTitle").value.trim();
       const due = document.getElementById("taskDue").value || null;
-      const priority = document.getElementById("taskPriority").value || "medium";
+      const priority =
+        document.getElementById("taskPriority").value || "medium";
       if (!title) return;
       addTask({ title, due, priority });
       dlg.close();
@@ -502,9 +574,17 @@ const App = (() => {
 
   // ---------- Escape HTML ----------
   function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, s => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[s]));
+    return str.replace(
+      /[&<>"']/g,
+      (s) =>
+        ({
+          "&": "&amp;",
+          "<": "&lt;",
+          ">": "&gt;",
+          '"': "&quot;",
+          "'": "&#39;",
+        }[s])
+    );
   }
 
   // ---------- UID ----------
@@ -516,14 +596,65 @@ const App = (() => {
   function seedDemo() {
     state.user = { username: "demo", pinHash: "demo", remember: true };
     state.habits = [
-      { id: uid(), name: "Morning stretch", freq: "daily", diff: "easy", start: state.today, streak: 3, paused: false, history: { [state.today]: true }, missesInRow: 0 },
-      { id: uid(), name: "Code for 60 min", freq: "daily", diff: "hard", start: state.today, streak: 7, paused: false, history: { [state.today]: false }, missesInRow: 1 },
-      { id: uid(), name: "Read 10 pages", freq: "daily", diff: "medium", start: state.today, streak: 5, paused: false, history: {}, missesInRow: 2 },
+      {
+        id: uid(),
+        name: "Morning stretch",
+        freq: "daily",
+        diff: "easy",
+        start: state.today,
+        streak: 3,
+        paused: false,
+        history: { [state.today]: true },
+        missesInRow: 0,
+      },
+      {
+        id: uid(),
+        name: "Code for 60 min",
+        freq: "daily",
+        diff: "hard",
+        start: state.today,
+        streak: 7,
+        paused: false,
+        history: { [state.today]: false },
+        missesInRow: 1,
+      },
+      {
+        id: uid(),
+        name: "Read 10 pages",
+        freq: "daily",
+        diff: "medium",
+        start: state.today,
+        streak: 5,
+        paused: false,
+        history: {},
+        missesInRow: 2,
+      },
     ];
     state.tasks = [
-      { id: uid(), title: "Ship v0 UI polish", due: state.today, priority: "high", done: false, created: state.today },
-      { id: uid(), title: "Email beta testers", due: null, priority: "medium", done: false, created: state.today },
-      { id: uid(), title: "Refactor storage", due: state.today, priority: "low", done: true, created: state.today },
+      {
+        id: uid(),
+        title: "Ship v0 UI polish",
+        due: state.today,
+        priority: "high",
+        done: false,
+        created: state.today,
+      },
+      {
+        id: uid(),
+        title: "Email beta testers",
+        due: null,
+        priority: "medium",
+        done: false,
+        created: state.today,
+      },
+      {
+        id: uid(),
+        title: "Refactor storage",
+        due: state.today,
+        priority: "low",
+        done: true,
+        created: state.today,
+      },
     ];
     // Seed logs for charts
     for (let i = 0; i < 10; i++) {
@@ -540,7 +671,8 @@ const App = (() => {
   // ---------- Init ----------
   function init() {
     starfield();
-    document.getElementById("dateToday").textContent = new Date().toDateString();
+    document.getElementById("dateToday").textContent =
+      new Date().toDateString();
 
     // Auto-login if remembered user exists
     const lastUser = localStorage.getItem(STORAGE_LAST_USER);
@@ -553,15 +685,17 @@ const App = (() => {
     }
 
     // Auth events
-    document.getElementById("loginForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const username = document.getElementById("username").value.trim();
-      const pin = document.getElementById("pin").value.trim();
-      const remember = document.getElementById("remember").checked;
-      if (!username || pin.length !== 4) return;
-      await login(username, pin, remember);
-      if (remember) localStorage.setItem(STORAGE_LAST_USER, username);
-    });
+    document
+      .getElementById("loginForm")
+      .addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("username").value.trim();
+        const pin = document.getElementById("pin").value.trim();
+        const remember = document.getElementById("remember").checked;
+        if (!username || pin.length !== 4) return;
+        await login(username, pin, remember);
+        if (remember) localStorage.setItem(STORAGE_LAST_USER, username);
+      });
     document.getElementById("quickDemo").addEventListener("click", () => {
       seedDemo();
       enterApp();
@@ -570,27 +704,38 @@ const App = (() => {
     document.getElementById("logout").addEventListener("click", logout);
 
     // Tabs
-    document.querySelectorAll(".tab").forEach(btn => {
+    document.querySelectorAll(".tab").forEach((btn) => {
       btn.addEventListener("click", () => switchTab(btn.dataset.tab));
     });
 
     // Filters
-    document.getElementById("habitView").addEventListener("change", renderHabits);
-    document.getElementById("habitSort").addEventListener("change", renderHabits);
+    document
+      .getElementById("habitView")
+      .addEventListener("change", renderHabits);
+    document
+      .getElementById("habitSort")
+      .addEventListener("change", renderHabits);
     document.getElementById("taskView").addEventListener("change", renderTasks);
     document.getElementById("taskSort").addEventListener("change", renderTasks);
 
     // Modals
-    document.getElementById("addHabit").addEventListener("click", () => openHabitModal());
-    document.getElementById("addTask").addEventListener("click", () => openTaskModal());
+    document
+      .getElementById("addHabit")
+      .addEventListener("click", () => openHabitModal());
+    document
+      .getElementById("addTask")
+      .addEventListener("click", () => openTaskModal());
 
     // Settings
     document.getElementById("graceDays").value = state.settings.graceDays;
-    document.getElementById("autoPauseAfter").value = state.settings.autoPauseAfter;
+    document.getElementById("autoPauseAfter").value =
+      state.settings.autoPauseAfter;
     document.getElementById("theme").value = state.settings.theme;
     document.getElementById("saveSettings").addEventListener("click", () => {
       const graceDays = Number(document.getElementById("graceDays").value);
-      const autoPauseAfter = Number(document.getElementById("autoPauseAfter").value);
+      const autoPauseAfter = Number(
+        document.getElementById("autoPauseAfter").value
+      );
       state.settings.graceDays = clamp(graceDays, 0, 3);
       state.settings.autoPauseAfter = clamp(autoPauseAfter, 0, 7);
       save();
